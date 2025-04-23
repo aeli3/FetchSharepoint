@@ -1,0 +1,5 @@
+# Node modules (big unnecessary files)
+node_modules/
+
+# Environment variables (NEVER upload secrets)
+.env
