@@ -104,7 +104,6 @@ async function traverseFolder(driveId, folderId, childrenArray, accessToken) {
 }
 
 async function fetchFolderTree(accessToken) {
-    console.log("FROM TREE", accessToken)
     const folderTree = []
     const {value: drives} = await fetchSharePoint(
         `https://graph.microsoft.com/v1.0/sites/chapterworks.sharepoint.com/drives`,
@@ -124,6 +123,26 @@ async function fetchFolderTree(accessToken) {
 
     return folderTree
 }
+
+async function fetchPdfDownloads(driveId, folderId, accessToken) {
+    const url = `https://graph.microsoft.com/v1.0/sites/root/drives/${driveId}/items/${folderId}/children`
+    const { value } = await fetchSharePoint(url, accessToken)
+  
+    if (!value) {
+      console.warn('No children found for folder:', folderId)
+      return []
+    }
+    
+    // Filter only PDFs and extract name + download URL
+    const pdfs = value
+      .filter((item) => item.file && item.file.mimeType === "application/pdf")
+      .map((item) => ({
+        pdfName: item.name,
+        downloadUrl: item['@microsoft.graph.downloadUrl']
+      }))
+  
+    return pdfs
+  }
 
 
 // EXPRESS ROUTES
@@ -145,7 +164,10 @@ app.post('/accessToken', async (req, res) => {
         const folderTree = await fetchFolderTree(newGraphApiToken);
         console.log("folderTree: ", folderTree);
 
-        res.status(200).json({ message: 'Access token flow complete', folderTree });
+        const pdfs =  await fetchPdfDownloads('b!gYw8aP-b7EuA6IaFP28xN99zWzd5m-hCh9hq5JYPh2eKb_C17kCvQLcqAhKs8e9f', folderTree[0]?.['children'][0].id, newGraphApiToken)
+        console.log("PDFS", pdfs)
+
+        res.status(200).json({ message: 'Access token flow complete', folderTree, pdfs });
     } catch (err) {
         console.error('Error during access token flow:', err);
         res.status(500).send('Server error');
